@@ -1,0 +1,14 @@
+GITHUB PAGES + .COM DEPLOYMENT
+==============================
+
+This folder is ready to publish as a static GitHub Pages site.
+
+When the exact domain is chosen:
+1) Create or choose a GitHub repository.
+2) Upload everything in this folder to the repository root.
+3) GitHub repository > Settings > Pages > Build and deployment > Deploy from a branch > main > /(root).
+4) In Settings > Pages > Custom domain, enter the exact .com domain.
+5) Add the DNS records required by GitHub Pages at the domain registrar.
+6) After DNS resolves, enable Enforce HTTPS.
+
+Do NOT add a CNAME file until the exact domain is known. GitHub will create/update it when the custom domain is configured.

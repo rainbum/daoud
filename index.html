@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#ede9e1" />
+  <title>In Loving Memory — Mohammad Daoud</title>
+  <link rel="preload" href="assets/pages/page-001.webp" as="image" type="image/webp" />
+  <link rel="preload" href="assets/pages/page-002.webp" as="image" type="image/webp" />
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <main class="reader" aria-label="Interactive memorial book for Mohammad Daoud">
+    <header class="chrome">
+      <div class="identity">
+        <span class="eyebrow">IN LOVING MEMORY</span>
+        <strong>Mohammad Daoud</strong>
+        <span class="years">1987 — 2026</span>
+      </div>
+      <div id="pageStatus" class="page-status" aria-live="polite">Cover</div>
+    </header>
+
+    <section id="scene" class="scene" aria-label="Interactive book">
+      <div class="table-shadow" aria-hidden="true"></div>
+      <div class="book-viewport">
+        <div id="book" class="book" tabindex="0" aria-label="Grab an outer corner and drag to turn the page"></div>
+      </div>
+      <div id="hint" class="hint" aria-hidden="true">
+        <span class="corner-mark"></span>
+        <span>grab the corner &amp; drag</span>
+      </div>
+    </section>
+
+    <nav class="controls" aria-label="Book navigation">
+      <button id="prevBtn" type="button" class="nav" aria-label="Previous page">‹</button>
+      <button id="soundBtn" type="button" class="sound" aria-pressed="true" title="Soft background music starts after your first page interaction">♫ Music on</button>
+      <button id="nextBtn" type="button" class="nav" aria-label="Next page">›</button>
+    </nav>
+    <p id="loadStatus" class="load-status" aria-live="polite">Loading book…</p>
+  </main>
+  <audio id="paperSound" preload="auto" src="assets/audio/page-turn.wav"></audio>
+  <audio id="ambientMusic" preload="metadata" loop src="assets/audio/remembering-mohammad.mp3"></audio>
+</body>
+</html>
