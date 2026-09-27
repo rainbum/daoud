@@ -6,6 +6,8 @@
   const PAPER_VOLUME = 0.14;
 
   const readerEl = document.getElementById('reader');
+  const sceneEl = document.getElementById('scene');
+  const bookViewportEl = document.querySelector('.book-viewport');
   const bookEl = document.getElementById('book');
   const pageStatus = document.getElementById('pageStatus');
   const loadStatus = document.getElementById('loadStatus');
@@ -27,6 +29,15 @@
   let immersiveFallback = false;
   let paperCtx = null;
   let premiumPaperBuffer = null;
+  let zoomScale = 1;
+  let zoomX = 0;
+  let zoomY = 0;
+  let pinchState = null;
+  let panState = null;
+  let touchSequenceLocked = false;
+
+  const ZOOM_MIN = 1;
+  const ZOOM_MAX = 4;
 
   const pageUrl = (n) => `assets/pages/page-${String(n).padStart(3, '0')}.webp`;
 
@@ -287,6 +298,207 @@
     }
   }
 
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function touchDistance(a, b) {
+    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+  }
+
+  function touchCenter(a, b) {
+    return {
+      x: (a.clientX + b.clientX) / 2,
+      y: (a.clientY + b.clientY) / 2
+    };
+  }
+
+  function sceneCenter() {
+    const r = sceneEl.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  function clampZoomPan() {
+    if (zoomScale <= 1.01) {
+      zoomScale = 1;
+      zoomX = 0;
+      zoomY = 0;
+      return;
+    }
+
+    const scaledW = Math.max(1, bookViewportEl.offsetWidth) * zoomScale;
+    const scaledH = Math.max(1, bookViewportEl.offsetHeight) * zoomScale;
+    const maxX = Math.max(36, (scaledW - sceneEl.clientWidth) / 2 + 36);
+    const maxY = Math.max(36, (scaledH - sceneEl.clientHeight) / 2 + 36);
+
+    zoomX = clamp(zoomX, -maxX, maxX);
+    zoomY = clamp(zoomY, -maxY, maxY);
+  }
+
+  function applyBookZoom(animate = false) {
+    if (!bookViewportEl) return;
+    bookViewportEl.classList.toggle('zooming', !animate);
+    bookViewportEl.style.transform =
+      `translate3d(${zoomX.toFixed(2)}px,${zoomY.toFixed(2)}px,0) scale(${zoomScale.toFixed(4)})`;
+    readerEl.classList.toggle('zoomed', zoomScale > 1.01);
+
+    if (animate) {
+      window.setTimeout(() => {
+        if (!pinchState && !panState) bookViewportEl.classList.add('zooming');
+      }, 180);
+    }
+  }
+
+  function resetBookZoom(animate = true) {
+    zoomScale = 1;
+    zoomX = 0;
+    zoomY = 0;
+    pinchState = null;
+    panState = null;
+    applyBookZoom(animate);
+  }
+
+  function startPinch(touches) {
+    if (!bookViewportEl || touches.length < 2) return;
+    const a = touches[0];
+    const b = touches[1];
+    const center = touchCenter(a, b);
+    const viewportCenter = sceneCenter();
+
+    pinchState = {
+      distance: Math.max(1, touchDistance(a, b)),
+      scale: zoomScale,
+      localX: (center.x - viewportCenter.x - zoomX) / zoomScale,
+      localY: (center.y - viewportCenter.y - zoomY) / zoomScale
+    };
+    panState = null;
+    touchSequenceLocked = true;
+    bookViewportEl.classList.add('zooming');
+  }
+
+  function setupTouchZoom() {
+    if (!readerEl || !sceneEl || !bookViewportEl) return;
+
+    readerEl.addEventListener('touchstart', (e) => {
+      if (e.touches.length >= 2) {
+        e.preventDefault();
+        e.stopPropagation();
+        hideHint();
+        ensureMusic();
+        startPinch(e.touches);
+        return;
+      }
+
+      if (zoomScale > 1.01 && e.touches.length === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        const t = e.touches[0];
+        panState = {
+          clientX: t.clientX,
+          clientY: t.clientY,
+          zoomX,
+          zoomY
+        };
+        touchSequenceLocked = true;
+        bookViewportEl.classList.add('zooming');
+      }
+    }, { passive: false, capture: true });
+
+    readerEl.addEventListener('touchmove', (e) => {
+      if (e.touches.length >= 2) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!pinchState) startPinch(e.touches);
+        if (!pinchState) return;
+
+        const a = e.touches[0];
+        const b = e.touches[1];
+        const center = touchCenter(a, b);
+        const viewportCenter = sceneCenter();
+        const nextScale = clamp(
+          pinchState.scale * (touchDistance(a, b) / pinchState.distance),
+          ZOOM_MIN,
+          ZOOM_MAX
+        );
+
+        zoomScale = nextScale;
+        zoomX = center.x - viewportCenter.x - pinchState.localX * nextScale;
+        zoomY = center.y - viewportCenter.y - pinchState.localY * nextScale;
+        clampZoomPan();
+        applyBookZoom(false);
+        return;
+      }
+
+      if (zoomScale > 1.01 && panState && e.touches.length === 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        const t = e.touches[0];
+        zoomX = panState.zoomX + (t.clientX - panState.clientX);
+        zoomY = panState.zoomY + (t.clientY - panState.clientY);
+        clampZoomPan();
+        applyBookZoom(false);
+        return;
+      }
+
+      if (touchSequenceLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, { passive: false, capture: true });
+
+    const endTouchGesture = (e) => {
+      if (touchSequenceLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      if (e.touches.length >= 2) {
+        startPinch(e.touches);
+        return;
+      }
+
+      if (pinchState) {
+        pinchState = null;
+        if (zoomScale <= 1.04) {
+          resetBookZoom(true);
+        } else {
+          clampZoomPan();
+          applyBookZoom(true);
+        }
+      }
+
+      if (zoomScale > 1.01 && e.touches.length === 1) {
+        const t = e.touches[0];
+        panState = {
+          clientX: t.clientX,
+          clientY: t.clientY,
+          zoomX,
+          zoomY
+        };
+      } else if (e.touches.length === 0) {
+        panState = null;
+        touchSequenceLocked = false;
+        bookViewportEl.classList.remove('zooming');
+      }
+    };
+
+    readerEl.addEventListener('touchend', endTouchGesture, { passive: false, capture: true });
+    readerEl.addEventListener('touchcancel', (e) => {
+      if (touchSequenceLocked) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      pinchState = null;
+      panState = null;
+      touchSequenceLocked = false;
+      clampZoomPan();
+      applyBookZoom(true);
+      bookViewportEl.classList.remove('zooming');
+    }, { passive: false, capture: true });
+  }
+
   function statusFor(index) {
     if (index <= 0) return 'Cover';
     if (index >= TOTAL - 1) return 'Back cover';
@@ -366,6 +578,7 @@
     });
 
     pageFlip.loadFromHTML(document.querySelectorAll('.page'));
+    setupTouchZoom();
 
     bookEl.addEventListener('pointerdown', () => {
       hideHint();
@@ -411,7 +624,13 @@
 
     syncFullscreenButton();
     window.addEventListener('resize', () => scheduleLayoutRefresh(100), { passive: true });
-    window.addEventListener('orientationchange', () => scheduleLayoutRefresh(220), { passive: true });
+    window.addEventListener('orientationchange', () => {
+      window.setTimeout(() => {
+        clampZoomPan();
+        applyBookZoom(true);
+        scheduleLayoutRefresh(120);
+      }, 220);
+    }, { passive: true });
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => scheduleLayoutRefresh(120), { passive: true });
