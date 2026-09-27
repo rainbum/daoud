@@ -2,9 +2,10 @@
   'use strict';
 
   const TOTAL = 36;
-  const MUSIC_VOLUME = 0.07; // deliberately low: the book remains the focus
+  const MUSIC_VOLUME = 0.05; // softer background level
   const PAPER_VOLUME = 0.14;
 
+  const readerEl = document.getElementById('reader');
   const bookEl = document.getElementById('book');
   const pageStatus = document.getElementById('pageStatus');
   const loadStatus = document.getElementById('loadStatus');
@@ -23,6 +24,7 @@
   let fadeFrame = 0;
   let hintHidden = false;
   let layoutTimer = 0;
+  let immersiveFallback = false;
 
   const pageUrl = (n) => `assets/pages/page-${String(n).padStart(3, '0')}.webp`;
 
@@ -77,7 +79,6 @@
       musicStarted = true;
       fadeMusic(MUSIC_VOLUME, 4800);
     }).catch(() => {
-      // Browser autoplay rules can block audio until another user gesture.
       musicStarted = false;
     });
   }
@@ -125,33 +126,67 @@
     return document.fullscreenElement || document.webkitFullscreenElement || null;
   }
 
+  function setFallbackFullscreen(active) {
+    immersiveFallback = Boolean(active);
+    if (readerEl) readerEl.classList.toggle('immersive-fallback', immersiveFallback);
+    syncFullscreenButton();
+    scheduleLayoutRefresh(120);
+  }
+
   function syncFullscreenButton() {
     if (!fullscreenBtn) return;
-    const root = document.documentElement;
-    const canFullscreen = Boolean(root.requestFullscreen || root.webkitRequestFullscreen);
-    fullscreenBtn.hidden = !canFullscreen;
-    if (!canFullscreen) return;
-    const active = Boolean(fullscreenElement());
+    const active = Boolean(fullscreenElement()) || immersiveFallback;
+    fullscreenBtn.hidden = false;
     fullscreenBtn.textContent = active ? '⤢' : '⛶';
     fullscreenBtn.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
     fullscreenBtn.title = active ? 'Exit full screen' : 'Full screen';
   }
 
-  async function toggleFullscreen() {
-    const root = document.documentElement;
-    try {
-      if (fullscreenElement()) {
-        const exit = document.exitFullscreen || document.webkitExitFullscreen;
-        if (exit) await exit.call(document);
+  function toggleFullscreen() {
+    if (!readerEl) return;
+
+    if (fullscreenElement()) {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) {
+        try {
+          const result = exit.call(document);
+          if (result && typeof result.catch === 'function') result.catch(() => setFallbackFullscreen(false));
+        } catch (_) {
+          setFallbackFullscreen(false);
+        }
       } else {
-        const enter = root.requestFullscreen || root.webkitRequestFullscreen;
-        if (enter) await enter.call(root);
+        setFallbackFullscreen(false);
+      }
+      return;
+    }
+
+    if (immersiveFallback) {
+      setFallbackFullscreen(false);
+      return;
+    }
+
+    const enter = readerEl.requestFullscreen || readerEl.webkitRequestFullscreen;
+    if (!enter) {
+      setFallbackFullscreen(true);
+      return;
+    }
+
+    try {
+      const result = enter.call(readerEl);
+      if (result && typeof result.then === 'function') {
+        result.then(() => {
+          immersiveFallback = false;
+          syncFullscreenButton();
+          scheduleLayoutRefresh(160);
+        }).catch(() => setFallbackFullscreen(true));
+      } else {
+        immersiveFallback = false;
+        syncFullscreenButton();
+        scheduleLayoutRefresh(160);
       }
     } catch (_) {
-      // Fullscreen is optional; the reader already fits the visible viewport.
+      setFallbackFullscreen(true);
     }
-    syncFullscreenButton();
-    scheduleLayoutRefresh(160);
   }
 
   function statusFor(index) {
@@ -234,7 +269,6 @@
 
     pageFlip.loadFromHTML(document.querySelectorAll('.page'));
 
-    // Start the soundtrack only after a real user gesture; this complies with browser autoplay rules.
     bookEl.addEventListener('pointerdown', () => {
       hideHint();
       ensureMusic();
@@ -280,17 +314,27 @@
     syncFullscreenButton();
     window.addEventListener('resize', () => scheduleLayoutRefresh(100), { passive: true });
     window.addEventListener('orientationchange', () => scheduleLayoutRefresh(220), { passive: true });
+
     if (window.visualViewport) {
       window.visualViewport.addEventListener('resize', () => scheduleLayoutRefresh(120), { passive: true });
     }
+
     document.addEventListener('fullscreenchange', () => {
+      immersiveFallback = false;
+      if (readerEl) readerEl.classList.remove('immersive-fallback');
       syncFullscreenButton();
       scheduleLayoutRefresh(140);
     });
+
     document.addEventListener('webkitfullscreenchange', () => {
+      immersiveFallback = false;
+      if (readerEl) readerEl.classList.remove('immersive-fallback');
       syncFullscreenButton();
       scheduleLayoutRefresh(140);
     });
+
+    document.addEventListener('fullscreenerror', () => setFallbackFullscreen(true));
+    document.addEventListener('webkitfullscreenerror', () => setFallbackFullscreen(true));
 
     updateStatus(0);
   }
