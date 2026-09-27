@@ -35,6 +35,7 @@
   let pinchState = null;
   let panState = null;
   let touchSequenceLocked = false;
+  let safariGestureState = null;
 
   const ZOOM_MIN = 1;
   const ZOOM_MAX = 4;
@@ -379,6 +380,61 @@
 
   function setupTouchZoom() {
     if (!readerEl || !sceneEl || !bookViewportEl) return;
+
+    // Safari/iOS exposes dedicated pinch gesture events. Handle them directly so
+    // the book itself scales while the surrounding memorial UI stays fixed.
+    readerEl.addEventListener('gesturestart', (e) => {
+      if (!sceneEl.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      hideHint();
+      ensureMusic();
+
+      const viewportCenter = sceneCenter();
+      const gx = Number.isFinite(e.clientX) ? e.clientX : viewportCenter.x;
+      const gy = Number.isFinite(e.clientY) ? e.clientY : viewportCenter.y;
+
+      safariGestureState = {
+        scale: zoomScale,
+        localX: (gx - viewportCenter.x - zoomX) / zoomScale,
+        localY: (gy - viewportCenter.y - zoomY) / zoomScale
+      };
+      touchSequenceLocked = true;
+      bookViewportEl.classList.add('zooming');
+    }, { passive: false, capture: true });
+
+    readerEl.addEventListener('gesturechange', (e) => {
+      if (!safariGestureState || !sceneEl.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const viewportCenter = sceneCenter();
+      const gx = Number.isFinite(e.clientX) ? e.clientX : viewportCenter.x;
+      const gy = Number.isFinite(e.clientY) ? e.clientY : viewportCenter.y;
+      const nextScale = clamp(safariGestureState.scale * e.scale, ZOOM_MIN, ZOOM_MAX);
+
+      zoomScale = nextScale;
+      zoomX = gx - viewportCenter.x - safariGestureState.localX * nextScale;
+      zoomY = gy - viewportCenter.y - safariGestureState.localY * nextScale;
+      clampZoomPan();
+      applyBookZoom(false);
+    }, { passive: false, capture: true });
+
+    readerEl.addEventListener('gestureend', (e) => {
+      if (!safariGestureState) return;
+      e.preventDefault();
+      e.stopPropagation();
+      safariGestureState = null;
+      touchSequenceLocked = false;
+
+      if (zoomScale <= 1.04) {
+        resetBookZoom(true);
+      } else {
+        clampZoomPan();
+        applyBookZoom(true);
+      }
+      bookViewportEl.classList.remove('zooming');
+    }, { passive: false, capture: true });
 
     readerEl.addEventListener('touchstart', (e) => {
       if (e.touches.length >= 2) {
