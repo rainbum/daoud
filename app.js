@@ -11,6 +11,7 @@
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
   const soundBtn = document.getElementById('soundBtn');
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
   const paperSound = document.getElementById('paperSound');
   const ambientMusic = document.getElementById('ambientMusic');
   const hint = document.getElementById('hint');
@@ -21,6 +22,7 @@
   let musicStarted = false;
   let fadeFrame = 0;
   let hintHidden = false;
+  let layoutTimer = 0;
 
   const pageUrl = (n) => `assets/pages/page-${String(n).padStart(3, '0')}.webp`;
 
@@ -110,6 +112,48 @@
     }
   }
 
+  function scheduleLayoutRefresh(delay = 100) {
+    clearTimeout(layoutTimer);
+    layoutTimer = window.setTimeout(() => {
+      if (pageFlip && typeof pageFlip.update === 'function') {
+        pageFlip.update();
+      }
+    }, delay);
+  }
+
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function syncFullscreenButton() {
+    if (!fullscreenBtn) return;
+    const root = document.documentElement;
+    const canFullscreen = Boolean(root.requestFullscreen || root.webkitRequestFullscreen);
+    fullscreenBtn.hidden = !canFullscreen;
+    if (!canFullscreen) return;
+    const active = Boolean(fullscreenElement());
+    fullscreenBtn.textContent = active ? '⤢' : '⛶';
+    fullscreenBtn.setAttribute('aria-label', active ? 'Exit full screen' : 'Enter full screen');
+    fullscreenBtn.title = active ? 'Exit full screen' : 'Full screen';
+  }
+
+  async function toggleFullscreen() {
+    const root = document.documentElement;
+    try {
+      if (fullscreenElement()) {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) await exit.call(document);
+      } else {
+        const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+        if (enter) await enter.call(root);
+      }
+    } catch (_) {
+      // Fullscreen is optional; the reader already fits the visible viewport.
+    }
+    syncFullscreenButton();
+    scheduleLayoutRefresh(160);
+  }
+
   function statusFor(index) {
     if (index <= 0) return 'Cover';
     if (index >= TOTAL - 1) return 'Back cover';
@@ -153,9 +197,9 @@
       height: 1200,
       size: 'stretch',
       minWidth: 260,
-      maxWidth: 1000,
+      maxWidth: 1200,
       minHeight: 260,
-      maxHeight: 1000,
+      maxHeight: 1200,
       drawShadow: true,
       maxShadowOpacity: 0.48,
       flippingTime: 1080,
@@ -207,6 +251,14 @@
       pageFlip.flipNext('bottom');
     });
 
+    if (fullscreenBtn) {
+      fullscreenBtn.addEventListener('click', () => {
+        hideHint();
+        ensureMusic();
+        toggleFullscreen();
+      });
+    }
+
     soundBtn.addEventListener('click', () => {
       setAudioEnabled(!audioEnabled);
     });
@@ -223,6 +275,21 @@
         ensureMusic();
         pageFlip.flipPrev('bottom');
       }
+    });
+
+    syncFullscreenButton();
+    window.addEventListener('resize', () => scheduleLayoutRefresh(100), { passive: true });
+    window.addEventListener('orientationchange', () => scheduleLayoutRefresh(220), { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => scheduleLayoutRefresh(120), { passive: true });
+    }
+    document.addEventListener('fullscreenchange', () => {
+      syncFullscreenButton();
+      scheduleLayoutRefresh(140);
+    });
+    document.addEventListener('webkitfullscreenchange', () => {
+      syncFullscreenButton();
+      scheduleLayoutRefresh(140);
     });
 
     updateStatus(0);
