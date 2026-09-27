@@ -11,7 +11,7 @@ html,body{margin:0;width:100%;height:100%;min-width:320px;background:var(--canva
 html{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
 body{min-height:100%;height:100vh;height:100dvh;overflow:hidden}
 button{font:inherit}
-.reader,.scene,.book-viewport,.book{touch-action:pinch-zoom}
+.reader{touch-action:none}\n.scene,.book-viewport,.book{touch-action:none}
 .reader{
   position:fixed;inset:0;
   width:100vw;
@@ -53,7 +53,13 @@ button{font:inherit}
   max-width:none;
   display:flex;align-items:center;justify-content:center;
   min-width:0;
+  transform-origin:center center;
+  transform:translate3d(0,0,0) scale(1);
+  will-change:transform;
+  transition:transform .16s ease-out;
 }
+.book-viewport.zooming{transition:none!important}
+.reader.zoomed .book{cursor:move}
 .book{
   position:relative;z-index:5;
   width:100%;
