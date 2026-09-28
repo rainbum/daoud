@@ -3,7 +3,9 @@
 
   const TOTAL = 36;
   const MUSIC_VOLUME = 0.05; // softer background level
+  const MUSIC_DUCK_VOLUME = 0.012;
   const PAPER_VOLUME = 0.58;
+  const DAOUD_AUTO_DELAY = 3000;
 
   const readerEl = document.getElementById('reader');
   const sceneEl = document.getElementById('scene');
@@ -15,8 +17,11 @@
   const nextBtn = document.getElementById('nextBtn');
   const soundBtn = document.getElementById('soundBtn');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
+  const daoudMessageBtn = document.getElementById('daoudMessageBtn');
+  const downloadMessage = document.getElementById('downloadMessage');
   const paperSound = document.getElementById('paperSound');
   const ambientMusic = document.getElementById('ambientMusic');
+  const daoudMessage = document.getElementById('daoudMessage');
   const hint = document.getElementById('hint');
 
   let pageFlip = null;
@@ -34,6 +39,11 @@
   let panState = null;
   let touchSequenceLocked = false;
   let safariGestureState = null;
+  let firstInteractionSeen = false;
+  let autoMessageTimer = 0;
+  let autoMessageConsumed = false;
+  let messageHasPlayed = false;
+  let messageWasPausedManually = false;
 
   const ZOOM_MIN = 1;
   const ZOOM_MAX = 4;
@@ -96,7 +106,7 @@
   }
 
   function playPaper() {
-    if (!audioEnabled) return;
+    if (!audioEnabled || (daoudMessage && !daoudMessage.paused && !daoudMessage.ended)) return;
     try {
       paperSound.pause();
       paperSound.currentTime = 0;
@@ -104,6 +114,128 @@
       paperSound.playbackRate = 1;
       paperSound.play().catch(() => {});
     } catch (_) {}
+  }
+
+  function syncDaoudMessageButton() {
+    if (!daoudMessageBtn || !daoudMessage) return;
+    const playing = !daoudMessage.paused && !daoudMessage.ended;
+    daoudMessageBtn.classList.toggle('is-playing', playing);
+    daoudMessageBtn.setAttribute('aria-pressed', String(playing));
+
+    if (playing) {
+      daoudMessageBtn.textContent = '❚❚ Pause Daoud’s To Y’all';
+      daoudMessageBtn.title = 'Pause Daoud’s message';
+    } else if (daoudMessage.ended || (messageHasPlayed && daoudMessage.currentTime < 0.05)) {
+      daoudMessageBtn.textContent = '↻ Replay Daoud’s To Y’all';
+      daoudMessageBtn.title = 'Replay Daoud’s message';
+    } else if (messageWasPausedManually && daoudMessage.currentTime > 0) {
+      daoudMessageBtn.textContent = '▶ Resume Daoud’s To Y’all';
+      daoudMessageBtn.title = 'Resume Daoud’s message';
+    } else {
+      daoudMessageBtn.textContent = '▶ Daoud’s To Y’all';
+      daoudMessageBtn.title = 'Play Daoud’s message';
+    }
+  }
+
+  function restoreMusicAfterMessage() {
+    if (!audioEnabled || !musicStarted) return;
+    ambientMusic.play().then(() => fadeMusic(MUSIC_VOLUME, 1200)).catch(() => {});
+  }
+
+  function duckMusicForMessage() {
+    if (!audioEnabled || !musicStarted) return;
+    fadeMusic(MUSIC_DUCK_VOLUME, 650);
+  }
+
+  function cancelAutoMessage() {
+    if (autoMessageTimer) {
+      clearTimeout(autoMessageTimer);
+      autoMessageTimer = 0;
+    }
+    autoMessageConsumed = true;
+  }
+
+  function primeDaoudMessage() {
+    if (!daoudMessage) return;
+    const previousVolume = daoudMessage.volume;
+    daoudMessage.volume = 0;
+    try {
+      const p = daoudMessage.play();
+      if (p && typeof p.then === 'function') {
+        p.then(() => {
+          daoudMessage.pause();
+          daoudMessage.currentTime = 0;
+          daoudMessage.volume = previousVolume || 1;
+          syncDaoudMessageButton();
+        }).catch(() => {
+          daoudMessage.volume = previousVolume || 1;
+        });
+      } else {
+        daoudMessage.pause();
+        daoudMessage.currentTime = 0;
+        daoudMessage.volume = previousVolume || 1;
+      }
+    } catch (_) {
+      daoudMessage.volume = previousVolume || 1;
+    }
+  }
+
+  function playDaoudMessage({ fromAuto = false, restart = false } = {}) {
+    if (!daoudMessage) return;
+
+    if (!fromAuto) cancelAutoMessage();
+
+    if (restart || daoudMessage.ended) {
+      try { daoudMessage.currentTime = 0; } catch (_) {}
+    }
+
+    daoudMessage.volume = 1;
+    messageWasPausedManually = false;
+    duckMusicForMessage();
+
+    const p = daoudMessage.play();
+    if (p && typeof p.then === 'function') {
+      p.then(() => {
+        messageHasPlayed = true;
+        syncDaoudMessageButton();
+      }).catch(() => {
+        restoreMusicAfterMessage();
+        syncDaoudMessageButton();
+      });
+    } else {
+      messageHasPlayed = true;
+      syncDaoudMessageButton();
+    }
+  }
+
+  function toggleDaoudMessage() {
+    if (!daoudMessage) return;
+
+    if (!daoudMessage.paused && !daoudMessage.ended) {
+      daoudMessage.pause();
+      messageWasPausedManually = true;
+      restoreMusicAfterMessage();
+      syncDaoudMessageButton();
+      return;
+    }
+
+    const shouldRestart = daoudMessage.ended || (messageHasPlayed && daoudMessage.currentTime < 0.05);
+    playDaoudMessage({ fromAuto: false, restart: shouldRestart });
+  }
+
+  function armDaoudAutoMessage() {
+    if (firstInteractionSeen) return;
+    firstInteractionSeen = true;
+
+    ensureMusic();
+    primeDaoudMessage();
+
+    autoMessageTimer = window.setTimeout(() => {
+      autoMessageTimer = 0;
+      if (autoMessageConsumed || !daoudMessage) return;
+      autoMessageConsumed = true;
+      playDaoudMessage({ fromAuto: true, restart: true });
+    }, DAOUD_AUTO_DELAY);
   }
 
   function setAudioEnabled(next) {
@@ -488,7 +620,13 @@
     ambientMusic.volume = 0;
     ambientMusic.preload = 'auto';
     ambientMusic.load();
+    if (daoudMessage) {
+      daoudMessage.volume = 1;
+      daoudMessage.preload = 'auto';
+      daoudMessage.load();
+    }
     setAudioEnabled(true);
+    syncDaoudMessageButton();
 
     if (!window.St || !window.St.PageFlip) {
       loadStatus.textContent = 'Could not load the page-turn engine. Please check your internet connection.';
@@ -543,16 +681,19 @@
     bookEl.addEventListener('pointerdown', () => {
       hideHint();
       ensureMusic();
+      armDaoudAutoMessage();
     }, { passive: true });
 
     prevBtn.addEventListener('click', () => {
       hideHint();
       ensureMusic();
+      armDaoudAutoMessage();
       pageFlip.flipPrev('bottom');
     });
     nextBtn.addEventListener('click', () => {
       hideHint();
       ensureMusic();
+      armDaoudAutoMessage();
       pageFlip.flipNext('bottom');
     });
 
@@ -560,24 +701,63 @@
       fullscreenBtn.addEventListener('click', () => {
         hideHint();
         ensureMusic();
+        armDaoudAutoMessage();
         toggleFullscreen();
       });
     }
 
     soundBtn.addEventListener('click', () => {
+      armDaoudAutoMessage();
       setAudioEnabled(!audioEnabled);
     });
+
+    if (daoudMessageBtn && daoudMessage) {
+      daoudMessageBtn.addEventListener('click', () => {
+        firstInteractionSeen = true;
+        toggleDaoudMessage();
+      });
+
+      daoudMessage.addEventListener('play', () => {
+        messageHasPlayed = true;
+        duckMusicForMessage();
+        syncDaoudMessageButton();
+      });
+
+      daoudMessage.addEventListener('pause', () => {
+        if (!daoudMessage.ended) syncDaoudMessageButton();
+      });
+
+      daoudMessage.addEventListener('ended', () => {
+        messageHasPlayed = true;
+        messageWasPausedManually = false;
+        try { daoudMessage.currentTime = 0; } catch (_) {}
+        restoreMusicAfterMessage();
+        syncDaoudMessageButton();
+      });
+    }
+
+    if (downloadMessage) {
+      downloadMessage.addEventListener('click', () => {
+        firstInteractionSeen = true;
+        cancelAutoMessage();
+      });
+    }
+
+    document.addEventListener('pointerdown', armDaoudAutoMessage, { once: true, passive: true, capture: true });
+    document.addEventListener('keydown', armDaoudAutoMessage, { once: true, capture: true });
 
     bookEl.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight') {
         e.preventDefault();
         hideHint();
         ensureMusic();
+        armDaoudAutoMessage();
         pageFlip.flipNext('bottom');
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         hideHint();
         ensureMusic();
+        armDaoudAutoMessage();
         pageFlip.flipPrev('bottom');
       }
     });
