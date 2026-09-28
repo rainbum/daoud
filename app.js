@@ -3,7 +3,7 @@
 
   const TOTAL = 36;
   const MUSIC_VOLUME = 0.05; // softer background level
-  const PAPER_VOLUME = 0.14;
+  const PAPER_VOLUME = 0.58;
 
   const readerEl = document.getElementById('reader');
   const sceneEl = document.getElementById('scene');
@@ -27,8 +27,8 @@
   let hintHidden = false;
   let layoutTimer = 0;
   let immersiveFallback = false;
-  let paperCtx = null;
-  let premiumPaperBuffer = null;
+  let paperRustleReady = false;
+  let paperRustleObjectUrl = null;
   let zoomScale = 1;
   let zoomX = 0;
   let zoomY = 0;
@@ -97,111 +97,47 @@
     });
   }
 
-  function getPaperAudioContext() {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return null;
-    if (!paperCtx) paperCtx = new AudioCtx({ latencyHint: 'interactive' });
-    if (paperCtx.state === 'suspended') paperCtx.resume().catch(() => {});
-    return paperCtx;
-  }
+  async function loadPaperRustle() {
+    const chunkUrls = Array.from(
+      { length: 8 },
+      (_, i) => `assets/audio/paper-rustle-real.b64.${String(i + 1).padStart(2, '0')}?v=450`
+    );
 
-  function envelopeAt(t, points) {
-    for (let i = 1; i < points.length; i += 1) {
-      if (t <= points[i][0]) {
-        const a = points[i - 1];
-        const b = points[i];
-        const p = (t - a[0]) / Math.max(0.0001, b[0] - a[0]);
-        return a[1] + (b[1] - a[1]) * Math.max(0, Math.min(1, p));
-      }
-    }
-    return points[points.length - 1][1];
-  }
-
-  function buildPremiumPaperBuffer(ctx) {
-    const duration = 1.02;
-    const sr = ctx.sampleRate;
-    const length = Math.ceil(duration * sr);
-    const buffer = ctx.createBuffer(2, length, sr);
-    const left = buffer.getChannelData(0);
-    const right = buffer.getChannelData(1);
-
-    const bodyPts = [[0,0],[0.06,0.05],[0.17,0.30],[0.32,0.90],[0.50,1],[0.67,0.48],[0.86,0.12],[1.02,0]];
-    const crinklePts = [[0,0],[0.10,0.08],[0.21,0.33],[0.36,0.18],[0.55,0.28],[0.73,0.06],[1.02,0]];
-    const flexPts = [[0,0],[0.20,0.08],[0.42,0.28],[0.63,0.13],[1.02,0]];
-
-    let low = 0;
-    let mid = 0;
-    let landingLow = 0;
-    let peak = 0;
-
-    for (let i = 0; i < length; i += 1) {
-      const t = i / sr;
-      const white = Math.random() * 2 - 1;
-      low += 0.018 * (white - low);
-      mid += 0.12 * (white - mid);
-
-      const high = white - mid;
-      const texture = white - low;
-      let mono =
-        high * envelopeAt(t, bodyPts) * 0.48 +
-        texture * envelopeAt(t, crinklePts) * 0.16 +
-        low * envelopeAt(t, flexPts) * 1.8;
-
-      if (t >= 0.76) {
-        const landingWhite = Math.random() * 2 - 1;
-        landingLow += 0.08 * (landingWhite - landingLow);
-        mono += landingLow * Math.exp(-(t - 0.76) / 0.055) * 1.25;
-      }
-
-      const pan = -0.55 + (0.97 * (t / duration));
-      const angle = (pan + 1) * Math.PI / 4;
-      const l = mono * Math.cos(angle);
-      const r = mono * Math.sin(angle);
-      left[i] = l;
-      right[i] = r;
-      peak = Math.max(peak, Math.abs(l), Math.abs(r));
-    }
-
-    const scale = peak > 0 ? 0.70 / peak : 1;
-    for (let i = 0; i < length; i += 1) {
-      left[i] *= scale;
-      right[i] *= scale;
-    }
-
-    return buffer;
-  }
-
-  function playPaperFallback() {
     try {
-      paperSound.pause();
-      paperSound.currentTime = 0;
-      paperSound.volume = PAPER_VOLUME;
-      paperSound.playbackRate = 0.98 + Math.random() * 0.03;
-      paperSound.play().catch(() => {});
-    } catch (_) {}
+      const chunks = await Promise.all(chunkUrls.map(async (url) => {
+        const response = await fetch(url, { cache: 'force-cache' });
+        if (!response.ok) throw new Error(`paper audio HTTP ${response.status}`);
+        return (await response.text()).trim();
+      }));
+
+      const encoded = chunks.join('');
+      const binary = atob(encoded);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      if (paperRustleObjectUrl) URL.revokeObjectURL(paperRustleObjectUrl);
+      paperRustleObjectUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+      paperSound.src = paperRustleObjectUrl;
+      paperSound.preload = 'auto';
+      paperSound.load();
+      paperRustleReady = true;
+    } catch (_) {
+      // Keep the original local WAV as a safe fallback.
+      paperRustleReady = false;
+    }
   }
 
   function playPaper() {
     if (!audioEnabled) return;
     try {
-      const ctx = getPaperAudioContext();
-      if (!ctx) {
-        playPaperFallback();
-        return;
-      }
-      if (!premiumPaperBuffer) premiumPaperBuffer = buildPremiumPaperBuffer(ctx);
-
-      const source = ctx.createBufferSource();
-      const gain = ctx.createGain();
-      source.buffer = premiumPaperBuffer;
-      source.playbackRate.value = 0.985 + Math.random() * 0.03;
-      gain.gain.value = PAPER_VOLUME;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      source.start();
-    } catch (_) {
-      playPaperFallback();
-    }
+      paperSound.pause();
+      paperSound.currentTime = 0;
+      paperSound.volume = PAPER_VOLUME;
+      paperSound.playbackRate = paperRustleReady ? 1 : (0.98 + Math.random() * 0.03);
+      paperSound.play().catch(() => {});
+    } catch (_) {}
   }
 
   function setAudioEnabled(next) {
@@ -584,7 +520,10 @@
   function init() {
     buildPages();
     ambientMusic.volume = 0;
+    ambientMusic.preload = 'auto';
+    ambientMusic.load();
     setAudioEnabled(true);
+    loadPaperRustle();
 
     if (!window.St || !window.St.PageFlip) {
       loadStatus.textContent = 'Could not load the page-turn engine. Please check your internet connection.';
