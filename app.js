@@ -27,8 +27,6 @@
   let hintHidden = false;
   let layoutTimer = 0;
   let immersiveFallback = false;
-  let paperRustleReady = false;
-  let paperRustleObjectUrl = null;
   let zoomScale = 1;
   let zoomX = 0;
   let zoomY = 0;
@@ -97,45 +95,13 @@
     });
   }
 
-  async function loadPaperRustle() {
-    const chunkUrls = Array.from(
-      { length: 8 },
-      (_, i) => `assets/audio/paper-rustle-real.b64.${String(i + 1).padStart(2, '0')}?v=450`
-    );
-
-    try {
-      const chunks = await Promise.all(chunkUrls.map(async (url) => {
-        const response = await fetch(url, { cache: 'force-cache' });
-        if (!response.ok) throw new Error(`paper audio HTTP ${response.status}`);
-        return (await response.text()).trim();
-      }));
-
-      const encoded = chunks.join('');
-      const binary = atob(encoded);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-
-      if (paperRustleObjectUrl) URL.revokeObjectURL(paperRustleObjectUrl);
-      paperRustleObjectUrl = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
-      paperSound.src = paperRustleObjectUrl;
-      paperSound.preload = 'auto';
-      paperSound.load();
-      paperRustleReady = true;
-    } catch (_) {
-      // Keep the original local WAV as a safe fallback.
-      paperRustleReady = false;
-    }
-  }
-
   function playPaper() {
     if (!audioEnabled) return;
     try {
       paperSound.pause();
       paperSound.currentTime = 0;
       paperSound.volume = PAPER_VOLUME;
-      paperSound.playbackRate = paperRustleReady ? 1 : (0.98 + Math.random() * 0.03);
+      paperSound.playbackRate = 1;
       paperSound.play().catch(() => {});
     } catch (_) {}
   }
@@ -523,7 +489,6 @@
     ambientMusic.preload = 'auto';
     ambientMusic.load();
     setAudioEnabled(true);
-    loadPaperRustle();
 
     if (!window.St || !window.St.PageFlip) {
       loadStatus.textContent = 'Could not load the page-turn engine. Please check your internet connection.';
