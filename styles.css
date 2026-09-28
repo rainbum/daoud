@@ -91,6 +91,35 @@ button{font:inherit}
 }
 .hint.hide{opacity:0;transform:translateY(5px)}
 .corner-mark{width:18px;height:18px;border-right:1px solid rgba(167,140,88,.75);border-bottom:1px solid rgba(167,140,88,.75);border-radius:0 0 3px 0}
+
+.message-tools{
+  position:absolute;z-index:47;top:48px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:7px;
+  max-width:calc(100vw - 24px);
+}
+.message-action{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:34px;padding:0 12px;
+  border:1px solid rgba(77,65,49,.13);
+  border-radius:999px;
+  background:rgba(249,247,242,.88);
+  color:#6f665c;
+  box-shadow:0 3px 14px rgba(83,70,52,.08);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  text-decoration:none;
+  font-size:9px;
+  letter-spacing:.035em;
+  white-space:nowrap;
+  cursor:pointer;
+  touch-action:manipulation;
+  transition:background .18s ease,color .18s ease,opacity .18s ease,transform .18s ease;
+}
+.message-play{min-width:132px}
+.message-download{min-width:78px}
+.message-action:focus-visible{outline:2px solid rgba(167,140,88,.70);outline-offset:2px}
+.message-action.is-playing{background:#fff;color:#4f473e}
+
 .controls{
   position:absolute;z-index:45;left:50%;bottom:max(8px,env(safe-area-inset-bottom));transform:translateX(-50%);
   display:flex;align-items:center;gap:7px;
@@ -118,7 +147,7 @@ button{font:inherit}
 .reader:-webkit-full-screen{width:100vw;height:100vh;max-width:none;max-height:none}
 
 @media (hover:hover) and (pointer:fine){
-  .nav:not(:disabled):hover,.sound:hover{background:#fff;color:#4f473e}
+  .nav:not(:disabled):hover,.sound:hover,.message-action:hover{background:#fff;color:#4f473e}
 }
 @media (max-width:760px){
   .chrome{min-height:48px;padding:10px 12px 6px;align-items:center}
@@ -129,6 +158,10 @@ button{font:inherit}
   .controls{bottom:max(6px,env(safe-area-inset-bottom))}
   .nav{width:38px;min-height:38px}
   .sound{min-height:38px;padding:0 12px;min-width:80px}
+  .message-tools{top:42px;gap:5px;max-width:calc(100vw - 16px)}
+  .message-action{min-height:31px;padding:0 9px;font-size:8px}
+  .message-play{min-width:124px}
+  .message-download{min-width:70px}
   .hint{right:12px;bottom:60px;font-size:9px}
   .table-shadow{top:71%;width:92vw}
 }
@@ -139,3 +172,7 @@ button{font:inherit}
 @media (prefers-reduced-motion:reduce){
   *{transition-duration:.001ms!important;animation-duration:.001ms!important}
 }
+
+.reader.immersive-fallback .message-tools{top:max(10px,env(safe-area-inset-top))}
+.reader:fullscreen .message-tools,
+.reader:-webkit-full-screen .message-tools{top:max(10px,env(safe-area-inset-top))}
