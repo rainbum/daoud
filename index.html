@@ -11,9 +11,9 @@
   <link rel="icon" type="image/svg+xml" href="assets/daoud-favicon.svg" />
   <link rel="preload" href="assets/pages/page-001.webp" as="image" type="image/webp" />
   <link rel="preload" href="assets/pages/page-002.webp" as="image" type="image/webp" />
-  <link rel="stylesheet" href="styles.css?v=441" />
+  <link rel="stylesheet" href="styles.css?v=460" />
   <script defer src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
-  <script defer src="app.js?v=450"></script>
+  <script defer src="app.js?v=460"></script>
 </head>
 <body>
   <main id="reader" class="reader" aria-label="Interactive memorial book for Mohammad Daoud">
@@ -25,6 +25,11 @@
       </div>
       <div id="pageStatus" class="page-status" aria-live="polite">Cover</div>
     </header>
+
+    <div class="message-tools" aria-label="Daoud's message">
+      <button id="daoudMessageBtn" type="button" class="message-action message-play" aria-pressed="false" title="Play Daoud's message">▶ Daoud’s To Y’all</button>
+      <a id="downloadMessage" class="message-action message-download" href="assets/audio/daoud-to-yall.mp3" download="Daoud-To-Yall.mp3" title="Download Daoud's message">↓ Download</a>
+    </div>
 
     <section id="scene" class="scene" aria-label="Interactive book">
       <div class="table-shadow" aria-hidden="true"></div>
@@ -47,5 +52,6 @@
   </main>
   <audio id="paperSound" preload="auto" src="assets/audio/paper-rustle-real.mp3?v=450"></audio>
   <audio id="ambientMusic" preload="auto" loop src="assets/audio/remembering-mohammad.mp3"></audio>
+  <audio id="daoudMessage" preload="auto" src="assets/audio/daoud-to-yall.mp3"></audio>
 </body>
 </html>
