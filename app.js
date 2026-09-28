@@ -44,6 +44,7 @@
   let autoMessageConsumed = false;
   let messageHasPlayed = false;
   let messageWasPausedManually = false;
+  let primingDaoudMessage = false;
 
   const ZOOM_MIN = 1;
   const ZOOM_MAX = 4;
@@ -158,6 +159,7 @@
   function primeDaoudMessage() {
     if (!daoudMessage) return;
     const previousVolume = daoudMessage.volume;
+    primingDaoudMessage = true;
     daoudMessage.volume = 0;
     try {
       const p = daoudMessage.play();
@@ -166,17 +168,21 @@
           daoudMessage.pause();
           daoudMessage.currentTime = 0;
           daoudMessage.volume = previousVolume || 1;
+          primingDaoudMessage = false;
           syncDaoudMessageButton();
         }).catch(() => {
           daoudMessage.volume = previousVolume || 1;
+          primingDaoudMessage = false;
         });
       } else {
         daoudMessage.pause();
         daoudMessage.currentTime = 0;
         daoudMessage.volume = previousVolume || 1;
+        primingDaoudMessage = false;
       }
     } catch (_) {
       daoudMessage.volume = previousVolume || 1;
+      primingDaoudMessage = false;
     }
   }
 
@@ -248,7 +254,10 @@
 
     if (audioEnabled) {
       if (musicStarted) {
-        ambientMusic.play().then(() => fadeMusic(MUSIC_VOLUME, 1500)).catch(() => {});
+        const targetVolume = daoudMessage && !daoudMessage.paused && !daoudMessage.ended
+          ? MUSIC_DUCK_VOLUME
+          : MUSIC_VOLUME;
+        ambientMusic.play().then(() => fadeMusic(targetVolume, 1500)).catch(() => {});
       } else {
         ensureMusic();
       }
@@ -718,12 +727,14 @@
       });
 
       daoudMessage.addEventListener('play', () => {
+        if (primingDaoudMessage) return;
         messageHasPlayed = true;
         duckMusicForMessage();
         syncDaoudMessageButton();
       });
 
       daoudMessage.addEventListener('pause', () => {
+        if (primingDaoudMessage) return;
         if (!daoudMessage.ended) syncDaoudMessageButton();
       });
 
