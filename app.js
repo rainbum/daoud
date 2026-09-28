@@ -124,16 +124,16 @@
     daoudMessageBtn.setAttribute('aria-pressed', String(playing));
 
     if (playing) {
-      daoudMessageBtn.textContent = '❚❚ Pause Daoud’s To Y’all';
+      daoudMessageBtn.textContent = '❚❚ Pause';
       daoudMessageBtn.title = 'Pause Daoud’s message';
     } else if (daoudMessage.ended || (messageHasPlayed && daoudMessage.currentTime < 0.05)) {
-      daoudMessageBtn.textContent = '↻ Replay Daoud’s To Y’all';
+      daoudMessageBtn.textContent = '↻ Replay';
       daoudMessageBtn.title = 'Replay Daoud’s message';
     } else if (messageWasPausedManually && daoudMessage.currentTime > 0) {
-      daoudMessageBtn.textContent = '▶ Resume Daoud’s To Y’all';
+      daoudMessageBtn.textContent = '▶ Resume';
       daoudMessageBtn.title = 'Resume Daoud’s message';
     } else {
-      daoudMessageBtn.textContent = '▶ Daoud’s To Y’all';
+      daoudMessageBtn.textContent = '▶ To Y’all';
       daoudMessageBtn.title = 'Play Daoud’s message';
     }
   }
