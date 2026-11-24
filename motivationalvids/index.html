@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ede9e1">
+<title>Motivational Videos — Daoud</title>
+<link rel="icon" href="../assets/daoud-favicon.svg" type="image/svg+xml">
+<style>
+:root{color-scheme:light;--canvas:#ede9e1;--ink:#39352f;--gold:#a78c58;--muted:#746b60}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#f7f4ee,var(--canvas));color:var(--ink);font:16px/1.7 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+header{max-width:1100px;margin:auto;padding:20px clamp(16px,4vw,40px);display:flex;justify-content:space-between;align-items:center;gap:12px}a{color:inherit}header a{font-size:14px;text-decoration:none;border:1px solid #a78c5866;border-radius:99px;padding:7px 15px}header strong{font:normal 20px Georgia,serif}
+main{max-width:1100px;margin:auto;padding:12px clamp(16px,4vw,40px) 40px}h1{font:normal clamp(26px,4vw,40px)/1.4 Georgia,system-ui,serif;margin:0}p{margin:6px 0 18px;color:var(--muted)}.layout{display:grid;grid-template-columns:minmax(240px,420px) minmax(220px,1fr);gap:24px;align-items:start}
+.player,.catalog{background:#faf8f4;border:1px solid #a78c5833;border-radius:20px;padding:14px;box-shadow:0 12px 35px #554a3310}.screen{background:#181614;border-radius:14px;overflow:hidden;aspect-ratio:9/16;max-height:64vh;margin:auto;display:flex;justify-content:center;align-items:center}video{width:100%;height:100%;object-fit:contain;display:block}.controls{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}button{font:inherit;color:var(--ink);cursor:pointer;border:1px solid #a78c5855;background:#fffdf9;border-radius:12px;padding:8px 12px}button:disabled{opacity:.4;cursor:default}button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:3px}h2{font-size:19px;margin:0 0 6px}#selectedTitle{margin-top:12px}#status{min-height:1.5em;font-size:13px;color:var(--muted)}.catalog ol{list-style:none;padding:0;margin:0;display:grid;gap:9px}.entry{display:flex;align-items:center;gap:12px;width:100%;text-align:right;padding:10px}.entry[aria-current=true]{border-color:var(--gold);background:#eee5d4}.entry img{width:64px;aspect-ratio:9/16;object-fit:cover;border-radius:8px;background:#dcd3c3}.entry span{display:block}.entry small{color:var(--muted);font-size:12px}.entry .thumb{flex:none;position:relative;width:64px;aspect-ratio:9/16;background:#ded5c5;border-radius:8px;display:grid;place-items:center;overflow:hidden}.thumb img{position:absolute;inset:0}.note{font-size:13px;margin-top:14px}.controls span{font-variant-numeric:tabular-nums;white-space:nowrap}footer{max-width:1100px;margin:auto;padding:0 20px 22px;color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:680px){.layout{grid-template-columns:1fr;gap:16px}.screen{max-height:58vh}.player{padding:12px}header{padding-top:14px}main{padding-top:0}.catalog{padding:12px}}
+</style>
+</head>
+<body>
+<header><strong dir="ltr">Mohammad Daoud</strong><a href="../">العودة إلى الصفحة الرئيسية</a></header>
+<main><h1>فيديوهات تحفيزية</h1><p>رسائل قصيرة عن الأمل والإرادة والاستمرار.</p>
+<div class="layout"><section class="player" aria-label="مشغل الفيديو"><div class="screen"><video id="video" controls playsinline preload="none" aria-label="الفيديو المختار"></video></div><h2 id="selectedTitle"></h2><div class="controls"><button id="prev" type="button">السابق</button><span id="counter"></span><button id="next" type="button">التالي</button></div><div id="status" role="status" aria-live="polite"></div><p class="note">الصوت مولّد بالذكاء الاصطناعي؛ هذه المقاطع ليست تسجيلات أصلية.</p></section><section class="catalog" aria-label="قائمة الفيديوهات"><h2>لا تؤجّل حياتك</h2><ol id="list"></ol></section></div>
+</main><footer>In loving memory — Mohammad Daoud</footer>
+<script>
+"use strict";
+// Add future videos to this catalog; media filenames are relative to this page.
+const catalog=[
+{id:"01",title:"بلّش اليوم",en:"Start Today",file:"01_START_TODAY",duration:14.60},
+{id:"02",title:"الخوف من الفشل",en:"Fear of Failure",file:"02_FEAR_OF_FAILURE",duration:13.80},
+{id:"03",title:"ما تقارن حالك بغيرك",en:"Stop Comparing",file:"03_STOP_COMPARING",duration:11.63},
+{id:"04",title:"الانضباط",en:"Discipline",file:"04_DISCIPLINE",duration:12.63},
+{id:"05",title:"تعلّم من خسارتك",en:"Learn From Losses",file:"05_LEARN_FROM_LOSSES",duration:11.50},
+{id:"06",title:"القرار بإيدك",en:"The Final Decision",file:"06_THE_FINAL_DECISION",duration:12.57}
+];
+const video=document.getElementById("video"),list=document.getElementById("list"),prev=document.getElementById("prev"),next=document.getElementById("next"),status=document.getElementById("status");
+let active=0;
+const entries=catalog.map((item,i)=>{const li=document.createElement("li"),b=document.createElement("button"),thumb=document.createElement("span"),img=document.createElement("img"),label=document.createElement("span"),title=document.createElement("strong"),meta=document.createElement("small");b.type="button";b.className="entry";thumb.className="thumb";thumb.textContent="▶";img.src="posters/"+item.file+".jpg";img.alt="";img.loading="lazy";img.onerror=()=>img.remove();thumb.append(img);title.textContent=item.title;meta.textContent=Math.round(item.duration)+" ثانية";label.append(title,meta);b.append(thumb,label);b.addEventListener("click",()=>select(i,true));li.append(b);list.append(li);return b});
+function select(i,play=false){if(i<0||i>=catalog.length)return;video.pause();active=i;const item=catalog[i];video.poster="posters/"+item.file+".jpg";video.src="videos/"+item.file+".mp4";video.load();document.getElementById("selectedTitle").textContent=item.title;document.getElementById("counter").textContent=(i+1)+" / "+catalog.length;prev.disabled=i===0;next.disabled=i===catalog.length-1;entries.forEach((b,j)=>b.setAttribute("aria-current",String(j===i)));status.textContent="";if(play)video.play().catch(()=>{if(!video.error)status.textContent="اضغط تشغيل لبدء الفيديو.";});}
+prev.addEventListener("click",()=>select(active-1,true));next.addEventListener("click",()=>select(active+1,true));video.addEventListener("ended",()=>{if(active<catalog.length-1)select(active+1,true);else status.textContent="انتهت السلسلة.";});video.addEventListener("error",()=>{status.textContent="الفيديو غير متاح حالياً. يرجى المحاولة لاحقاً.";});select(0);
+</script>
+</body></html>
