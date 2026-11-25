@@ -15,8 +15,8 @@
   <script defer src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
   <script defer src="app.js?v=461"></script>
   <style id="daoud-menu-isolated">
-    #daoud-site-menu{position:absolute;z-index:48;right:clamp(16px,2.4vw,42px);top:48px;color:#6f665c;touch-action:manipulation;font-size:12px}
-    #daoud-site-menu>summary{display:grid;place-items:center;width:34px;height:34px;list-style:none;cursor:pointer;background:rgba(249,247,242,.94);border:1px solid rgba(77,65,49,.13);border-radius:50%;box-shadow:0 3px 14px rgba(83,70,52,.08);margin-left:auto}
+    #daoud-site-menu{position:absolute;z-index:1000;right:clamp(16px,2.4vw,42px);top:48px;display:block;visibility:visible;opacity:1;color:#5e5345;pointer-events:auto;touch-action:manipulation;font-size:12px}
+    #daoud-site-menu>summary{display:flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 12px;list-style:none;cursor:pointer;background:#faf8f4;border:1px solid #a78c58;border-radius:999px;box-shadow:0 3px 14px rgba(83,70,52,.12);margin-left:auto;width:max-content;font:500 12px/1 system-ui,sans-serif;color:#5e5345;white-space:nowrap}
     #daoud-site-menu>summary::-webkit-details-marker{display:none}
     #daoud-site-menu>summary:focus-visible,#daoud-site-menu a:focus-visible{outline:2px solid #a78c58;outline-offset:2px}
     #daoud-site-menu nav{position:absolute;right:0;top:40px;width:174px;background:#faf8f4;border:1px solid rgba(77,65,49,.15);border-radius:12px;padding:5px;box-shadow:0 6px 20px #53463420}
@@ -43,7 +43,7 @@
     </div>
 
     <details id="daoud-site-menu">
-      <summary aria-label="Site menu" title="Menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></summary>
+      <summary aria-label="Menu — Motivational Videos" title="Open site menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Menu</span></summary>
       <nav aria-label="Site navigation"><a href="./">Home</a><a href="./motivationalvids/">Motivational Videos</a></nav>
     </details>
 
