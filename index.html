@@ -14,6 +14,17 @@
   <link rel="stylesheet" href="styles.css?v=461" />
   <script defer src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.min.js"></script>
   <script defer src="app.js?v=461"></script>
+  <style id="daoud-menu-isolated">
+    #daoud-site-menu{position:absolute;z-index:48;right:clamp(16px,2.4vw,42px);top:48px;color:#6f665c;touch-action:manipulation;font-size:12px}
+    #daoud-site-menu>summary{display:grid;place-items:center;width:34px;height:34px;list-style:none;cursor:pointer;background:rgba(249,247,242,.94);border:1px solid rgba(77,65,49,.13);border-radius:50%;box-shadow:0 3px 14px rgba(83,70,52,.08);margin-left:auto}
+    #daoud-site-menu>summary::-webkit-details-marker{display:none}
+    #daoud-site-menu>summary:focus-visible,#daoud-site-menu a:focus-visible{outline:2px solid #a78c58;outline-offset:2px}
+    #daoud-site-menu nav{position:absolute;right:0;top:40px;width:174px;background:#faf8f4;border:1px solid rgba(77,65,49,.15);border-radius:12px;padding:5px;box-shadow:0 6px 20px #53463420}
+    #daoud-site-menu a{display:block;text-decoration:none;color:inherit;padding:9px 10px;border-radius:7px;white-space:nowrap}
+    #daoud-site-menu a:hover{background:#ede9e1}
+    @media(max-width:760px){#daoud-site-menu{right:10px;top:43px}}
+    .reader:fullscreen #daoud-site-menu,.reader.immersive-fallback #daoud-site-menu{top:calc(48px + env(safe-area-inset-top,0px))}
+  </style>
 </head>
 <body>
   <main id="reader" class="reader" aria-label="Interactive memorial book for Mohammad Daoud">
@@ -30,6 +41,11 @@
       <button id="daoudMessageBtn" type="button" class="message-action message-play" aria-pressed="false" title="Play Daoud's message">▶ To Y’all</button>
       <a id="downloadMessage" class="message-action message-download icon-only" href="assets/audio/daoud-to-yall.mp3" download="Daoud-To-Yall.mp3" title="Download Daoud's message" aria-label="Download Daoud's message">↓</a>
     </div>
+
+    <details id="daoud-site-menu">
+      <summary aria-label="Site menu" title="Menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></summary>
+      <nav aria-label="Site navigation"><a href="./">Home</a><a href="./motivationalvids/">Motivational Videos</a></nav>
+    </details>
 
     <section id="scene" class="scene" aria-label="Interactive book">
       <div class="table-shadow" aria-hidden="true"></div>
